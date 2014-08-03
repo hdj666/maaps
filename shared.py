@@ -1,4 +1,4 @@
-# !/usr/bin/python
+#!/usr/bin/python
 #
 # Author : hdj <helmut@oblig.at>
 # Date   : 2014.06

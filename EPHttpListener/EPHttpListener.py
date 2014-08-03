@@ -183,12 +183,3 @@ class EPHttpRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
 
-def test_make_server():
-    ctx = { 'Port': 8080, 'Adress': 'localhost', 'Path': '/', }
-    server = EPHttpListener(ctx, 'HDJ_testHttpListener')
-
-    result = server.wait4data(60)
-    print "Result (type: %s) = %s" % (type(result), result,)
-
-if __name__ == '__main__':
-    test_make_server()

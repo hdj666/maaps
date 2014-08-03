@@ -1,4 +1,4 @@
-# !/usr/bin/python
+#!/usr/bin/python
 #
 # Author : hdj <helmut@oblig.at>
 # Date   : 2014.06
@@ -391,3 +391,4 @@ if __name__ == '__main__':
     os.chdir('Applications/playground/')
     parse('MAIN')
     print g_chains
+
