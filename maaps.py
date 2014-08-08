@@ -13,7 +13,6 @@ import multiprocessing as mp
 import Queue
 import sys
 import atexit
-from collections                    import OrderedDict
 from maaps_parser                   import parse
 from shared                         import *                # shared global definitions (enums, constants, ...)
 from EPHttpListener.EPHttpListener  import EPHttpListener   # entrypoint
