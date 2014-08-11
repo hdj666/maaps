@@ -74,10 +74,6 @@ def t_code_LBRACE(t):
     r'\{'
     t.lexer.level += 1
 
-def t_code_COMMENT(t):
-    r'\#.*'
-    pass
-
 def t_code_RBRACE(t):
     r'\}'
     t.lexer.level -= 1
