@@ -10,7 +10,9 @@ import os
 import copy
 import ply.lex as lex
 import ply.yacc as yacc
+from templating import Templating
 from re import IGNORECASE
+
 
 reserved = {
     'if'    : 'IF',
@@ -44,19 +46,16 @@ tokens = [
 
 states = (
      ('code', 'exclusive'),
-#     ('chain_code', 'exclusive'),
- )
+)
 
 t_EQUAL         = r'='
 t_LBRACE        = r'\{'
 t_RBRACE        = r'\}'
-
-
-t_ignore        = ' \t'
+t_ignore        = r' \t'
 
 def t_COMMENT(t):
     r'\#.*'
-    pass
+    return t
 
 # =================================================================
 # == START OF Code|Context Section
@@ -67,7 +66,10 @@ def t_CODE(t):
     t.lexer.level = 1                          # Initial brace level
     t.lexer.begin('code')                     # Enter 'ccode' state
 
-# Rules for the ccode state
+def t_code_COMMENT(t):
+    r'\#.*'
+    return t
+
 def t_code_LBRACE(t):
     r'\{'
     t.lexer.level += 1
@@ -153,6 +155,7 @@ def t_IDENTIFER(t):
 #
 
 # Define a rule so we can track line numbers
+# TODO: make it work!
 def t_newline(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
@@ -162,32 +165,25 @@ def t_error(t):
     print "Illegal character '%s'" % t.value[0]
     t.lexer.skip(1)
 
-#
-#
-#
+# =============================================================================
+# Time for grammar ============================================================
+# =============================================================================
+g_chains          = []
+g_steps           = [] # <== volatile
+g_context         = [] # <== volatile
+g_files_to_parse  = []
+g_actual_filename = None
 
-# precedence = (
-#     ('left', 'IMPORT'),
-#     ('left', 'CHAIN'),
-# )
-
-g_chains                = []
-g_steps                 = [] # <== volatile
-g_context               = [] # <== volatile
-g_other_files_to_parse  = []
-g_actual_filename       = None
 
 def p_application(p):
     '''application : imports chains
                    | chains
                    | imports '''
 
+
 def p_imports_list(p):
     '''imports : import
                | import imports'''
-
-# def p_imports(p):
-#     '''imports : '''
 
 def p_import(p):
     '''import : IMPORT STRING
@@ -195,7 +191,8 @@ def p_import(p):
     '''
     if len(p) > 1:
         fn = p[2].replace('.', '/')
-        g_other_files_to_parse.append(fn)
+        g_files_to_parse.append(fn)
+
 
 def p_chains(p):
     '''chains : chain
@@ -209,9 +206,10 @@ def p_chain(p):
     '''chain : CHAIN STRING LBRACE steps RBRACE
              | CHAIN IDENTIFER LBRACE steps RBRACE'''
     global g_steps
-    p[0] = { 'name': p[2], 'steps': g_steps, 'filename': g_actual_filename, }
+    p[0] = dict( name=p[2], steps=g_steps, filename=g_actual_filename)
     g_steps = []
     #print "got a chain '%s'" % (p[2],)
+
 
 def p_steps_step(p):
     '''steps : step steps'''
@@ -230,6 +228,7 @@ def p_step(p):
     p[0] = p[1]
     #print "got a step %s" % (p[0],)
 
+
 def p_entrypoint(p):
     '''entrypoint : ENTRYPOINT IDENTIFER STRING LBRACE context RBRACE
                   | ENTRYPOINT IDENTIFER IDENTIFER LBRACE context RBRACE
@@ -237,18 +236,20 @@ def p_entrypoint(p):
                   | ENTRYPOINT LOOP STRING LBRACE context RBRACE
      '''
     global g_context
-    p[0] = { 'type': p[1], 'subtype': p[2], 'name': p[3], 'content': g_context, 'filename': g_actual_filename,}
+    p[0] = dict( type=p[1], subtype=p[2], name=p[3], content=g_context, filename=g_actual_filename)
     g_context = []
     #print "got a entrypoint %s" % (p[0],)
+
 
 def p_module(p):
     ''' module : MODULE PYTHON STRING LBRACE context RBRACE
                | MODULE PYTHON IDENTIFER LBRACE context RBRACE
     '''
     global g_context
-    p[0] = { 'type': p[1], 'subtype': p[2], 'name': p[3], 'content': g_context, 'filename': g_actual_filename,}
+    p[0] = dict( type=p[1], subtype=p[2], name=p[3], content=g_context, filename=g_actual_filename )
     g_context = []
     #print "got a module %s" % (p[0],)
+
 
 def p_call(p):
     '''call : CALL IDENTIFER STRING LBRACE context RBRACE
@@ -256,21 +257,22 @@ def p_call(p):
             | CALL STRING STRING LBRACE context RBRACE
     '''
     global g_context
-    p[0] = { 'type': p[1], 'subtype': p[2], 'name': p[3], 'content': g_context, 'filename': g_actual_filename,}
+    p[0] = dict( type=p[1], subtype=p[2], name=p[3], content=g_context, filename=g_actual_filename)
     g_context = []
+
 
 def p_onexception(p):
     '''onexception : ONEXCEPTION IDENTIFER LBRACE context RBRACE
                    | ONEXCEPTION STRING LBRACE context RBRACE
     '''
     global g_context
-    p[0] = { 'type': p[1], 'subtype': 'exceptionHandler', 'name': p[2], 'content': g_context, 'filename': g_actual_filename,}
+    p[0] = dict( type=p[1], subtype='exceptionHandler', name=p[2], content=g_context, filename=g_actual_filename )
     g_context = []
-
 
 
 def p_context(p):
     '''context : expressions'''
+
 
 def p_expression_list(p):
     '''expressions : expression expressions'''
@@ -285,21 +287,11 @@ def p_expression(p):
                   | CALL EQUAL value'''
     if len(p) > 2 and p[2] == '=':
         if p[1] == 'CALL':
-            p[0] = { 'type'   : 'call',
-                     'subtype': 'gosub',
-                     'value'  : p[3],
-                     #'value'  : p[3].upper(),
-            }
+            p[0] = dict( type='call', subtype='gosub', value=p[3])
         else:
-            p[0] = { 'type'   : 'expression',
-                     'subtype': 'assignement',
-                     'value'  : "%s %s %s" % (p[1].upper(), p[2], p[3],)
-            }
+            p[0] = dict( type='expression', subtype='assignement', value="%s %s %s" % (p[1].upper(), p[2], p[3],) )
     else:
-        p[0] = { 'type'   : 'expression',
-                 'subtype': 'code',
-                 'value'  : "%s" % (p[1],)
-        }
+        p[0] = dict( type='expression', subtype='code', value="%s" % (p[1],) )
     p[0]['filename'] = g_actual_filename
     #print "got context %s" % (p[0],)
 
@@ -319,23 +311,11 @@ def p_error(p):
         p,
     )
 
+# =============================================================================
+# End of tokenizer and yacc ===================================================
+# =============================================================================
 
-
-DATA = """
-import another_chain
-chain "1testme1" {
-    entrypoint blablas "some entrypoint" { x = y }
-    module python blabla { x2 = y2 }
-}
-chain "2testme2" {
-    entrypoint blablas2 "some 22 entrypoint" { x11 = y11 }
-    module python blabla2 { x22 = y22 }
-}
-"""
-
-from templating import Templating
-
-def apply_template(code):
+def _apply_template(code):
     if not os.path.exists('properties.py'):
         return code
     with open('properties.py', 'r') as fp:
@@ -348,47 +328,39 @@ def apply_template(code):
             return code
         return Templating(code).safe_substitute(template_data)
 
-def reset_globals():
+
+def _reset_globals():
     global g_chains
     global g_steps
     global g_context
-    global g_other_files_to_parse
+    global g_files_to_parse
     global g_actual_filename
-    g_chains                = []
-    g_steps                 = [] # <== volatile
-    g_context               = [] # <== volatile
-    g_other_files_to_parse  = []
-    g_actual_filename       = None
+    g_chains          = []
+    g_steps           = [] # <== volatile
+    g_context         = [] # <== volatile
+    g_files_to_parse  = []
+    g_actual_filename = None
 
 
 def parse(filename):
     global g_actual_filename
-    assert(os.path.exists("%s.maaps" % (filename,)) == True)
-
-    g_other_files_to_parse.append(filename)
+    g_files_to_parse.append(filename)
 
     lexer  = lex.lex(debug=0, reflags=IGNORECASE)
     parser = yacc.yacc()
 
     parsed_files = []
-    while len(g_other_files_to_parse) > 0:
-        g_actual_filename = g_other_files_to_parse.pop()
+    while len(g_files_to_parse) > 0:
+        g_actual_filename = g_files_to_parse.pop()
         if g_actual_filename in parsed_files:
             continue
         parsed_files.append(g_actual_filename)
-        # print "g_actual_filename is '%s'" % (g_actual_filename,)
-        with open("%s.maaps" % g_actual_filename, 'r') as fp:
+        with open(g_actual_filename + '.maaps', 'r') as fp:
             data = fp.read()
-        data = apply_template(data)
+        data = _apply_template(data)
         parser.parse(data, lexer=lexer, debug=0)
 
     ret = copy.deepcopy(g_chains)
-    reset_globals()
+    _reset_globals()
     return ret
-
-if __name__ == '__main__':
-    import os
-    os.chdir('Applications/playground/')
-    parse('MAIN')
-    print g_chains
 
