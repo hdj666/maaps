@@ -52,6 +52,9 @@ class PyCode(object):
                 if m:
                     pattern_to_skip   = "^%s" % (m.group(1),)
                     found_to_skip = True
+            line = re.sub(pattern_to_skip, "", line)
+            if len( line.strip() ) == 0:
+               continue
             new_code.append( re.sub(pattern_to_skip, "", line) )
         return "\n".join(new_code,)
 
