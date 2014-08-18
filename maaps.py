@@ -411,7 +411,9 @@ class Maaps(object):
     def start(self):
         for root, dirs, files in os.walk('./', topdown=True):
             for app_name in dirs:
-                if not app_name.startswith('_'):
+                if not os.path.isdir(app_name):
+                    continue
+                if app_name[0] not in ('_', '.',):
                     self.start_app(app_name)
             # we need only the first level of application directories
             del dirs[0:len(dirs)]
