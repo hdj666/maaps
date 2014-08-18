@@ -1,6 +1,14 @@
 Message And Action Passing System
 ======= maaps ================================================
 
+Python requirements:
+    Based on RedHat 6.4 these additional packages (available at epel) has to be installed:
+        o) python-requests
+        o) python-ply
+
+    Needed because RedHat uses Python 2.6.6
+        o) python-argparse
+
 Ziel:
     o) Schnell Abläufe programmieren (Schnell im Sinne von Entwicklungszeit)
     o) Vernünftiges Logging ohne Overhead und einfach konfigurierbares Logging
