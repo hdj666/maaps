@@ -43,16 +43,21 @@ class PyCode(object):
     @staticmethod
     def tidy_source_code(source_code):
         regex           = re.compile("^(\s+)[^\s]*")
+        comment_regex   = re.compile(r'^\s*#.*$')
         found_to_skip   = False
         pattern_to_skip = ""
         new_code        = []
         for line in source_code.split('\n'):
             if not found_to_skip:
+                # if the whole line is acomment ignore it
+                if comment_regex.match(line):
+                    continue
                 m = regex.match(line)
                 if m:
                     pattern_to_skip   = "^%s" % (m.group(1),)
                     found_to_skip = True
             line = re.sub(pattern_to_skip, "", line)
+            # skip empty lines
             if len( line.strip() ) == 0:
                continue
             new_code.append( re.sub(pattern_to_skip, "", line) )
