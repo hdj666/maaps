@@ -55,7 +55,7 @@ t_ignore        = r' \t'
 
 def t_COMMENT(t):
     r'\#.*'
-    return t
+    pass
 
 # =================================================================
 # == START OF Code|Context Section
@@ -65,10 +65,6 @@ def t_CODE(t):
     t.lexer.code_start = t.lexer.lexpos        # Record the starting position
     t.lexer.level = 1                          # Initial brace level
     t.lexer.begin('code')                     # Enter 'ccode' state
-
-def t_code_COMMENT(t):
-    r'\#.*'
-    return t
 
 def t_code_LBRACE(t):
     r'\{'
