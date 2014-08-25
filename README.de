@@ -32,7 +32,7 @@ Konfiguration/Programmierung:
             o) HttpListener (Webserver, Formular URL-encoded 100% fertig, JSON 10% fertig)
             o) Loop         (führt python code aus, sobald der Code eine "payload" setzt läuft
                              die Chain weiter.)
-        o) Modul
+        o) Module
             o) Python       (führt python code aus, entwerder "inline" oder in einem File.)
 
         o) Call
