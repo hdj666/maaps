@@ -97,7 +97,7 @@ class StepEntrypoint(StepBase):
 
     def run(self, runtime_context):
         result = self.instance.wait4data(runtime_context)
-        self.logger.info('%s: Data from EP: %r', self.name, result)
+        self.logger.info('%s: "payload" from EP: %r', self.name, result)
         self.logger.debug('%s: and context is "%r".', self.name, runtime_context)
         return result
 
