@@ -42,17 +42,19 @@ class _Executor(object):
         while True:
             ctx             = create_global_context()
             local_ctx       = {}
-            self.logger.debug('looping ...')
             ctx[CTX_LOGGER] = self.logger
+
             exec(self.compiled, ctx, local_ctx)
             payload   = local_ctx.get(CTX_PAYLOAD, None)
+            chainvars = ctx.get(CTX_CHAINVARS, dict(empty=True))
+
             if payload:
                 self.logger.debug('Loop Executor (%s): got payload from code it\'s of type "%s"',
                                   self.name,
                                   type(payload))
                 self.queue.put(payload)
+                self.queue.put(chainvars)
             time.sleep(self.delay)
-
 
 
 class EPLoop(object):
@@ -74,17 +76,24 @@ class EPLoop(object):
         looper.run()
 
     def wait4data(self, runtime_context, timeout=None):
+        """
+        as the loop code runs in a separate process every data (payload, chainvars) exchange with context
+        has to happen through the queue object.
+        """
         assert timeout > 0.0 or timeout is None
-        data = None
+        payload   = None
+        chainvars = None
         try:
-            data = self.queue.get(timeout=timeout)
-            self.logger.debug('got data of type "%s"', type(data))
+            payload   = self.queue.get(timeout=timeout)
+            chainvars = self.queue.get(timeout=timeout)
         except Empty:  # timeout happened
             self.logger.error("%s: Timeout!", self.name)
 
-        self.logger.debug('data is: %r', data)
-        runtime_context[CTX_PAYLOAD] = data
-        return data
+        self.logger.debug('payload   is: %r', payload)
+        self.logger.debug('chainvars is: %r', chainvars)
+        runtime_context[CTX_PAYLOAD]   = payload
+        runtime_context[CTX_CHAINVARS] = chainvars
+        return payload
 
     def shutdown(self):
         """ This terminates the entrypoint process!
