@@ -11,7 +11,7 @@ import logging
 import logging.config
 import Queue
 from Queue import Empty
-import simplejson as json
+import json
 import cgi                      # for parsing form-data
 # -----------------------------------------------------------------------------
 # import:
