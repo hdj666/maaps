@@ -51,7 +51,7 @@ states = (
 t_EQUAL         = r'='
 t_LBRACE        = r'\{'
 t_RBRACE        = r'\}'
-t_ignore        = r' \t'
+t_ignore        = ' \t'
 
 def t_COMMENT(t):
     r'\#.*'
@@ -92,6 +92,7 @@ t_code_ignore = " \t\n"
 # For bad characters, we just skip over it
 def t_code_error(t):
     t.lexer.skip(1)
+
 # =================================================================
 # == END OF Code|Context Section
 # =================================================================
