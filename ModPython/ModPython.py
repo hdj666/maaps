@@ -51,6 +51,7 @@ class ModPython(object):
             if t.is_alive():  # timeout happened
                 # TODO: t.terminate() (the threading version of terminate)
                 self.logger.error("%s: Timed out!", self.long_name)
+                raise RuntimeError("Timeout!!")
                 return
         else:
             t.join()
