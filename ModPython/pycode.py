@@ -60,8 +60,8 @@ class PyCode(object):
             # skip empty lines
             if len( line.strip() ) == 0:
                continue
-            new_code.append( re.sub(pattern_to_skip, "", line) )
-        return "\n".join(new_code,)
+            new_code.append( line )
+        return "\n".join(new_code)
 
     def run(self, exception_queue, global_context, local_context=None):
 
