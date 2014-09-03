@@ -83,7 +83,7 @@ class PyCode(object):
             exec(self.compiled, global_context, local_context)
             if CTX_PAYLOAD in local_context:
                 self.logger.debug('payload   in local_context: %s', local_context[CTX_PAYLOAD])
-                self.logger.debug('chainvars in local_context: %s', local_context[CTX_CHAINVARS])
+                self.logger.debug('chainvars in local_context: %s', local_context.get(CTX_CHAINVARS))
                 global_context[CTX_PAYLOAD] = local_context[CTX_PAYLOAD]
         except Exception:
             self.logger.error('%s: execution failed in "%r"', self.name, self.filename)
