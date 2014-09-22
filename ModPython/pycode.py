@@ -36,13 +36,13 @@ class PyCode(object):
             self._compiled = compile(self.code, self.name, 'exec')
         except Exception, e:
             self.logger.error("%s: compilation of %s failed.", self.name, self.filename)
-            self.logger.error("%s: code is: [%r]", self.name, self.code)
+            self.logger.error("%s: code is: [%s]", self.name, self.code)
             self.logger.exception("Exception is:")
             raise e
 
     @staticmethod
     def tidy_source_code(source_code):
-        regex           = re.compile("^(\s+)[^\s]*")
+        regex           = re.compile("^(\s+)[^\s]*.*$")
         comment_regex   = re.compile(r'^\s*#.*$')
         found_to_skip   = False
         pattern_to_skip = ""
@@ -60,7 +60,7 @@ class PyCode(object):
             # skip empty lines
             if len( line.strip() ) == 0:
                continue
-            new_code.append( re.sub(pattern_to_skip, "", line) )
+            new_code.append( line )
         return "\n".join(new_code,)
 
     def run(self, exception_queue, global_context, local_context=None):
