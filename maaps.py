@@ -33,12 +33,6 @@ class StepBase(object):
         self.is_entrypoint          = False
         self.is_exception_handler   = False
 
-        self.logger.debug(  'Creating Step: name "%s" type "%s" subtype "%s" content "%r"',
-                            self.name,
-                            self.stype,
-                            self.sub_stype,
-                            self.content
-        )
 
     def apply_assignements_to_context(self):
         # self.content is a list with dicts from yacc
@@ -47,12 +41,12 @@ class StepBase(object):
         #   {'subtype': 'assignement', 'type': 'expression', 'value': 'Adress = "localhost"'},
         #   {'subtype': 'assignement', 'type': 'expression', 'value': 'Port = 8000'}
         # ]
-        if self.logger.isEnabledFor(logging.DEBUG):
-            self.logger.debug( '#'*80 )
-            self.logger.debug( "%s: apply_assignements_to_context content is:", self.name )
-            for content in self.content:
-                self.logger.debug('%s', content)
-            self.logger.debug( '#'*80 )
+        #if self.logger.isEnabledFor(logging.DEBUG):
+        #    self.logger.debug( '#'*80 )
+        #    self.logger.debug( "%s: apply_assignements_to_context content is:", self.name )
+        #    for content in self.content:
+        #        self.logger.debug('%s', content)
+        #    self.logger.debug( '#'*80 )
 
         for content in self.content:
             expr = None
@@ -98,7 +92,7 @@ class StepEntrypoint(StepBase):
     def run(self, runtime_context):
         result = self.instance.wait4data(runtime_context)
         self.logger.info('%s: "payload" from EP: %r', self.name, result)
-        self.logger.debug('%s: and context is "%r".', self.name, runtime_context)
+        #self.logger.debug('%s: and context is "%r".', self.name, runtime_context)
         return result
 
     def shutdown(self):
@@ -156,7 +150,7 @@ class StepExceptionHandler(StepBase):
                 self.call = instruction['value']
 
     def run(self, runtime_context):
-        self.logger.debug('Executing ExceptionHandler "%s" code: "%r"', self.name, self.pycode.code)
+        #self.logger.debug('Executing ExceptionHandler "%s" code: "%r"', self.name, self.pycode.code)
         self.logger.info('Executing ExceptionHandler "%s".', self.name)
         exception_queue = Queue.Queue()
         self.pycode.run(exception_queue, runtime_context)
@@ -248,7 +242,7 @@ class Chain(object):
         return self.entrypoint
 
     def add_step(self, a_step):
-        self.logger.debug('%s: adding step "%s"', self.name, a_step.name)
+        #self.logger.debug('%s: adding step "%s"', self.name, a_step.name)
         if a_step.is_exception_handler:
             self.exception_handlers.append( a_step )
         elif a_step.is_entrypoint:
@@ -264,11 +258,9 @@ class Chain(object):
         True => continue with execution
         False=> halt chain execution
         """
-        self.logger.debug('Executing the step: "%s" context is "%r"', step.name, dbg_get_context_str(context))
+        #self.logger.debug('Executing the step: "%s" context is "%r"', step.name, dbg_get_context_str(context))
         try:
-            self.logger.debug('calling run() of %s', step.name)
             step.run(context)
-            self.logger.debug('after "calling run() of %s"', step.name)
         except Exception, e:
             msg = 'Exception in chain "%s" at step "%s" Exception = %s' % (self.name, step.name, sys.exc_info()[1],)
             context[CTX_EXCEPTION] = msg
@@ -287,10 +279,10 @@ class Chain(object):
 
 
     def _finish_steps(self, steps_to_finish, context):
-        self.logger.debug('%s._finish_steps(): context is "%r"', self.name, context)
+        #self.logger.debug('%s._finish_steps(): context is "%r"', self.name, context)
         for step in steps_to_finish:
             if not self._run_step(step, context):
-                self.logger.debug('_run_step of "%s" returned False.', step.name)
+                s#elf.logger.debug('_run_step of "%s" returned False.', step.name)
                 break
 
 
@@ -304,12 +296,12 @@ class Chain(object):
             runtime_context = chain_context
         if self.with_entypoint:
             while True:
-                self.logger.debug('(endless loop) run entrypoint %s...', self.entrypoint.name)
+                #self.logger.debug('(endless loop) run entrypoint %s...', self.entrypoint.name)
                 payload = self.entrypoint.run(runtime_context)
-                self.logger.debug('returned payload is "%r".'          , payload)
-                self.logger.debug('context is "%r"'                    , runtime_context)
+                #self.logger.debug('returned payload is "%r".'          , payload)
+                #self.logger.debug('context is "%r"'                    , runtime_context)
                 if payload:
-                    self.logger.debug('starting execution-thread to finish the steps.')
+                    #self.logger.debug('starting execution-thread to finish the steps.')
                     runtime_context[CTX_PAYLOAD] = payload
                     proc = mp.Process(  target = self._finish_steps,
                                         args   = (self.steps, runtime_context,),
@@ -322,7 +314,7 @@ class Chain(object):
             # this chain has only excuting tasks (module, call, loops, ...)
             # so we iterate through all steps and executing them.
             for step in self.steps:
-                self.logger.debug('running step: %s with context: %r', step.name, dbg_get_context_str(runtime_context))
+                #self.logger.debug('running step: %s with context: %r', step.name, dbg_get_context_str(runtime_context))
                 result = self._run_step(step, runtime_context)
                 self.logger.info('step "%s" result "%s".', step.name, result)
                 if not result:
@@ -346,7 +338,7 @@ class Application(object):
         return "\n".join(ret)
 
     def add_chain(self, a_chain):
-        self.logger.debug('%s: adding chain "%s"', self.name, a_chain.name)
+        #self.logger.debug('%s: adding chain "%s"', self.name, a_chain.name)
         self.chains[ a_chain.name ] = a_chain
 
     def get_chain(self, name):
@@ -367,7 +359,7 @@ class Application(object):
             self.logger.fatal('Application "%s" has no chain definied!', self.name)
             return False
 
-        self.logger.debug('%s: run', self.name)
+        #self.logger.debug('%s: run', self.name)
         for chain in self.chains.values():
             if chain.with_entypoint:
                 proc = mp.Process( name   = chain.name,
@@ -385,7 +377,7 @@ class Application(object):
     def shutdown(self):
         self.logger.info('Shutting down Application "%s"', self.name)
         for running in self.running_chains:
-            self.logger.debug("Shutdown: %s", running.name)
+            s#elf.logger.debug("Shutdown: %s", running.name)
             running.terminate() # <== should we check the return?
             running.join()
 
@@ -420,10 +412,8 @@ class Maaps(object):
 
     def start_app(self, app_name):
         if app_name.startswith('_'):
-            self.logger.debug('Application "%s", name starts with a "_", skipping application.', app_name)
             return
-        self.logger.debug('Starting app "%s"', app_name)
-
+        
         save_cwd = os.getcwd()
         os.chdir(app_name)
         assert(self.applications.get(app_name, None) is None)
