@@ -25,7 +25,7 @@ class PyCode(object):
         # if the code is in a file dont touch it, but if it's inline-code then
         # we have to reformat it we need to remove leading withspaces (else the
         # interpreter would complain about unexpected indentation.
-        self.logger.debug("creating code for name '%s' filename '%s' code '%r'", name, filename, code)
+        #self.logger.debug("creating code for name '%s' filename '%s' code '%r'", name, filename, code)
         if filename.startswith('inline'):
             self.code = PyCode.tidy_source_code(code)
         else:
@@ -83,12 +83,12 @@ class PyCode(object):
         try:
             exec(self.compiled, global_context, local_context)
             if CTX_PAYLOAD in local_context:
-                self.logger.debug('payload   in local_context: %s', local_context[CTX_PAYLOAD])
-                self.logger.debug('chainvars in local_context: %s', local_context.get(CTX_CHAINVARS))
+                #self.logger.debug('payload   in local_context: %s', local_context[CTX_PAYLOAD])
+                #self.logger.debug('chainvars in local_context: %s', local_context.get(CTX_CHAINVARS))
                 global_context[CTX_PAYLOAD] = local_context[CTX_PAYLOAD]
         except Exception:
             self.logger.error('%s: execution failed in "%r"', self.name, self.filename)
-            self.logger.debug("%s:  code is: [%r]" % (self.name, self.code,))
+            #self.logger.debug("%s:  code is: [%r]" % (self.name, self.code,))
             exception_queue.put(sys.exc_info())
         finally:
             if save_logger:
