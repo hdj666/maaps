@@ -101,6 +101,6 @@ class EPLoop(object):
         """
         self.looper.terminate()
         self.logger.debug('%s: Wait %s sec after termination to shutdown.', self.name, WAIT_SECS_ON_SHUTDOWN)
-        time.sleep(WAIT_SECS_ON_SHUTDOWN)
+        self.looper.join(WAIT_SECS_ON_SHUTDOWN)
         return not self.looper.is_alive()
 
