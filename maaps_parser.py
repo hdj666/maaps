@@ -323,7 +323,7 @@ def _apply_template(code):
         if not template_data:
             print "No 'template_data' to apply."
             return code
-        return Templating(code).substitute(template_data)
+        return Templating(code).safe_substitute(template_data)
 
 
 def _reset_globals():
