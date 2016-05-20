@@ -45,6 +45,7 @@ STEP_SUBTYPE_PYTHON       = 'python'
 # Enums for default context entries
 CTX_PAYLOAD         = 'payload'
 CTX_CHAINVARS       = 'chainvars'
+CTX_LOCK            = 'lock'
 CTX_LOGGER          = 'logger'
 CTX_STOP_EXECUTION  = 'abort'
 CTX_EXCEPTION       = 'exception'

@@ -157,6 +157,13 @@ Syntax:
         stehen. Sollten aber der Übersichthalber am Ende stehen
         (oder direkt nach einem entrypoint).
 
+        Alles chain-komponenten (EntryPoints, modules, ExceptionHandler, ...) haben im Context folgendes zur Verfügung:
+            o) payload: Daten die von einem Step zum anderen wandern sollen
+            o) logger:  Ein konfigurierter Logger (Aufruf wie ein "normaler"
+               Python logger zB: logger.debug(FORMAT, var-arg))
+            o) chainvars: Ein dict() um mehr Werte speichern zu können.
+            o) lock: ein chain-globales Lock object. Damit parallel ausgeführte chains sich selbst synchronisieren können.
+
         Internal:
         Jede "chain" läuft als eigenständiger Process wenn sie einen Entrypoint aufweist.
 
@@ -227,12 +234,6 @@ Syntax:
             Module Core: maaps.module.python
             Python Code: maaps.module.python.code
             (In Ausnahmefällen: maaps.pycode)
-
-        Python Code hat folgende Objecte/Daten zu Verfügung:
-            o) payload: Daten die von einem Step zum anderen wandern sollen
-            o) logger:  Ein konfigurierter Logger (Aufruf wie ein "normaler"
-               Python logger zB: logger.debug(FORMAT, var-arg))
-            o) chainvars: Ein dict() um mehr Werte speichern zu können.
 
         Es können alle dem Python zur Verfügung stehenden Techniken verwendet werden.
 

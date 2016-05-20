@@ -22,13 +22,14 @@ logging.config.fileConfig("%s/../logging.conf" % os.path.dirname(__file__))
 
 
 class ModPython(object):
-    def __init__(self, name, filename, source_code, timeout):
+    def __init__(self, name, filename, source_code, timeout, lock):
         self.logger        = logging.getLogger('maaps.module.python')
         self.code_logger   = logging.getLogger('maaps.module.python.code')
         self.name          = name
         self.long_name     = "%s(%s)" % (self.name, filename,)
         self.timeout       = float(timeout)
         self.pycode        = PyCode(name, filename, source_code)
+        self.lock          = lock
 
     # def _execute_code(self, global_context, local_context):
     #     self.pycode.run(global_context, local_context)
@@ -36,6 +37,7 @@ class ModPython(object):
     def run(self, global_context):
         # setup contexts
         global_context[CTX_LOGGER]  = self.code_logger
+        global_context[CTX_LOCK]    = self.lock
         local_context               = dict()
         exception_queue             = Queue.Queue()
 

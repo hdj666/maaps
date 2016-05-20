@@ -21,7 +21,7 @@ from ModPython.ModPython            import ModPython        # module
 from ModPython.pycode               import PyCode           # low level python code object
 
 class StepBase(object):
-    def __init__(self, name, application, step_type, step_subtype, step_content):
+    def __init__(self, name, application, step_type, step_subtype, step_content, shared_lock):
         self.logger                 = logging.getLogger('maaps.step')
         self.application            = application
         self.name                   = name
@@ -29,10 +29,10 @@ class StepBase(object):
         self.sub_stype              = step_subtype
         self.content                = step_content
         self.local_context          = dict()
+        self.shared_lock            = shared_lock
 
         self.is_entrypoint          = False
         self.is_exception_handler   = False
-
 
     def apply_assignements_to_context(self):
         # self.content is a list with dicts from yacc
@@ -62,8 +62,8 @@ class StepBase(object):
 
 
 class StepEntrypoint(StepBase):
-    def __init__(self, name, application, step_type, step_subtype, step_content):
-        super(StepEntrypoint, self).__init__(name, application, step_type, step_subtype, step_content)
+    def __init__(self, name, application, step_type, step_subtype, step_content, shared_lock):
+        super(StepEntrypoint, self).__init__(name, application, step_type, step_subtype, step_content, shared_lock)
         self.logger        = logging.getLogger('maaps.ep')
         self.is_entrypoint = True
         self.instance      = None
@@ -83,6 +83,8 @@ class StepEntrypoint(StepBase):
             source_code = PyCode.tidy_source_code(self.local_context['code'])
             if not source_code:
                 raise SyntaxError("%s: No CODE/CONTEXT block in LOOP statement!", self.name)
+
+            self.local_context[CTX_LOCK] = self.shared_lock
 
             self.instance = EPLoop(self.local_context, self.name, source_code)
 
@@ -105,8 +107,8 @@ class StepEntrypoint(StepBase):
 
 
 class StepModule(StepBase):
-    def __init__(self, name, application, step_type, step_subtype, step_content):
-        super(StepModule, self).__init__(name, application, step_type, step_subtype, step_content)
+    def __init__(self, name, application, step_type, step_subtype, step_content, shared_lock):
+        super(StepModule, self).__init__(name, application, step_type, step_subtype, step_content, shared_lock)
         self.instance       = None
         self.timeout        = 0     # Execution timeout, comes from maaps-file
         self.filename       = None
@@ -130,7 +132,7 @@ class StepModule(StepBase):
             if self.source is None:
                 raise SyntaxError("module python: Need 'Filename' or 'Code' entry.")
 
-            self.instance = ModPython(self.name, self.filename, self.source, self.timeout)
+            self.instance = ModPython(self.name, self.filename, self.source, self.timeout, self.shared_lock)
         else:
             raise TypeError('unknown module-type "%s"' % (self.sub_stype,))
 
@@ -139,8 +141,8 @@ class StepModule(StepBase):
 
 
 class StepExceptionHandler(StepBase):
-    def __init__(self, name, application, step_type, step_subtype, step_content):
-        super(StepExceptionHandler, self).__init__(name, application, step_type, step_subtype, step_content)
+    def __init__(self, name, application, step_type, step_subtype, step_content, shared_lock):
+        super(StepExceptionHandler, self).__init__(name, application, step_type, step_subtype, step_content, shared_lock)
         self.is_exception_handler   = True
         self.call = None
         for instruction in step_content:
@@ -150,9 +152,10 @@ class StepExceptionHandler(StepBase):
                 self.call = instruction['value']
 
     def run(self, runtime_context):
-        #self.logger.debug('Executing ExceptionHandler "%s" code: "%r"', self.name, self.pycode.code)
         self.logger.info('Executing ExceptionHandler "%s".', self.name)
-        exception_queue = Queue.Queue()
+
+        runtime_context[CTX_LOCK] = self.shared_lock
+        exception_queue           = Queue.Queue()
         self.pycode.run(exception_queue, runtime_context)
         try:
             exc_type, exc_obj, exc_trace = exception_queue.get(block=False)
@@ -168,14 +171,15 @@ class StepExceptionHandler(StepBase):
 
 
 class StepCall(StepBase):
-    def __init__(self, name, application, step_type, step_subtype, step_content):
-        super(StepCall, self).__init__(name, application, step_type, step_subtype, step_content)
+    def __init__(self, name, application, step_type, step_subtype, step_content, shared_lock):
+        super(StepCall, self).__init__(name, application, step_type, step_subtype, step_content, shared_lock)
         self.call_chain_name=step_subtype
         self.pycode      = PyCode(self.name, 'inline(StepCall)', self.content[0]['value'])
 
 
     def run(self, runtime_context):
         assert(CTX_PAYLOAD in runtime_context)
+        runtime_context[CTX_LOCK] = self.shared_lock
 
         chain = self.application.get_chain(self.call_chain_name)
         if not chain:
@@ -195,15 +199,15 @@ class StepCall(StepBase):
 
 class StepFactory(object):
     @staticmethod
-    def create_step(name, application, step_type, step_subtype, step_content):
+    def create_step(name, application, step_type, step_subtype, step_content, shared_lock):
         if step_type == 'MODULE':
-            return StepModule(name, application, step_type, step_subtype, step_content)
+            return StepModule(name, application, step_type, step_subtype, step_content, shared_lock)
         elif step_type == 'ENTRYPOINT':
-            return StepEntrypoint(name, application, step_type, step_subtype, step_content)
+            return StepEntrypoint(name, application, step_type, step_subtype, step_content, shared_lock)
         elif step_type == 'ONEXCEPTION':
-            return StepExceptionHandler(name, application, step_type, step_subtype, step_content)
+            return StepExceptionHandler(name, application, step_type, step_subtype, step_content, shared_lock)
         elif step_type == 'CALL':
-            return StepCall(name, application, step_type, step_subtype, step_content)
+            return StepCall(name, application, step_type, step_subtype, step_content, shared_lock)
         else:
             raise SyntaxError('unknown step "%s" with type: "%s"' % (name, step_type,))
 
@@ -212,7 +216,7 @@ class Chain(object):
     """
     Chain execution happens in a (newly) created process with it's own context object.
     """
-    def __init__(self, name, filename, application):
+    def __init__(self, name, filename, application, shared_lock):
         self.name               = name
         self.filename           = filename
         self.application        = application
@@ -220,6 +224,7 @@ class Chain(object):
         self.steps              = []
         self.exception_handlers = []
         self.logger             = logging.getLogger('maaps.chain')
+        self.shared_lock         = shared_lock
         self.stop_execution     = False
 
     def __str__(self):
@@ -242,7 +247,6 @@ class Chain(object):
         return self.entrypoint
 
     def add_step(self, a_step):
-        #self.logger.debug('%s: adding step "%s"', self.name, a_step.name)
         if a_step.is_exception_handler:
             self.exception_handlers.append( a_step )
         elif a_step.is_entrypoint:
@@ -282,7 +286,7 @@ class Chain(object):
         #self.logger.debug('%s._finish_steps(): context is "%r"', self.name, context)
         for step in steps_to_finish:
             if not self._run_step(step, context):
-                s#elf.logger.debug('_run_step of "%s" returned False.', step.name)
+                #self.logger.debug('_run_step of "%s" returned False.', step.name)
                 break
 
 
@@ -294,6 +298,7 @@ class Chain(object):
             runtime_context = copy.copy(chain_context)
         else:
             runtime_context = chain_context
+
         if self.with_entypoint:
             while True:
                 #self.logger.debug('(endless loop) run entrypoint %s...', self.entrypoint.name)
@@ -377,7 +382,7 @@ class Application(object):
     def shutdown(self):
         self.logger.info('Shutting down Application "%s"', self.name)
         for running in self.running_chains:
-            s#elf.logger.debug("Shutdown: %s", running.name)
+            #self.logger.debug("Shutdown: %s", running.name)
             running.terminate() # <== should we check the return?
             running.join()
 
@@ -424,9 +429,10 @@ class Maaps(object):
 
         self.logger.info('Application "%s" compiled. Instatiating it now ....', app_name)
         for c in chains:
+            shared_lock = mp.Lock()
             c['name'] = c['name'].lstrip('"').rstrip('"')
 
-            chain_obj = Chain( c['name'], c['filename'], self.applications[app_name] )
+            chain_obj = Chain( c['name'], c['filename'], self.applications[app_name], shared_lock)
 
             c['steps'].reverse()
             for s in c['steps']:
@@ -435,7 +441,8 @@ class Maaps(object):
                                                     self.applications[app_name],
                                                     s['type'],
                                                     s['subtype'],
-                                                    s['content'] )
+                                                    s['content'],
+                                                    shared_lock )
                 chain_obj.add_step( step_obj )
             self.applications[app_name].add_chain(chain_obj)
         if not self.applications[app_name].run():
