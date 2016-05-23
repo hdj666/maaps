@@ -29,7 +29,6 @@ Konfiguration/Programmierung:
     Abläufe sind in "Chains" organisiert
     Chains bestehen aus folgenden Komponenten:
         o) EntryPoint
-            o) HttpListener (Webserver, Formular URL-encoded 100% fertig, JSON 10% fertig)
             o) Loop         (führt python code aus, sobald der Code eine "payload" setzt läuft
                              die Chain weiter.)
         o) Module
@@ -42,7 +41,7 @@ Konfiguration/Programmierung:
             o) Exceptionhandler
                 o) gilt für die Chain in der er definiert wurde
                 o) es kann mehrere geben
-                o) Wenn eine Chain eine andere aufruft wird, bei einer Exception,
+                o) Wenn eine Chain eine andere aufruft wird (bei einer Exception)
                    ein Exception Handler nach dem anderen ausgeführt (FIFO).
 
     Großen Wert wurde auf logging gelegt. Jede Komponente kann über den Logidentifer identifiziert und
@@ -164,38 +163,25 @@ Syntax:
             o) chainvars: Ein dict() um mehr Werte speichern zu können.
             o) lock: ein chain-globales Lock object. Damit parallel ausgeführte chains sich selbst synchronisieren können.
 
+        Da Chains mit EntryPoints gleichzeitig laufen könnten, zB wenn das Loop-interval kürzer ist als die Durchführungszeit
+        der gesamten Chain hier noch eine Übersicht wie der (Laufzeit) Kontext aus Sicht der Prozesse ist:
+
+                        Chain A                 Chain A                 Chain A
+                        ==================      ==================      ==================
+                        payload                 payload                 payload
+                        ------------------      ------------------      ------------------
+                        logger                  logger                  logger
+                        ------------------      ------------------      ------------------
+                        chainvars               chainvars               chainvars
+                        ------------------------------------------------------------------
+                        lock
+                        ------------------------------------------------------------------
+
         Internal:
         Jede "chain" läuft als eigenständiger Process wenn sie einen Entrypoint aufweist.
 
 
-    EntryPoints:
-        __ HttpListener: __
-
-        entrypoint HttpListener IDENTIFER|STRING {
-            Port   = NUMBER
-            Adress = STRING
-            Path   = STRING
-            code   = {
-                PYTHON_CODE
-            }
-        }
-
-        Logidentifer: maaps.entrypoint.httplistener
-
-        The HttpListener waits at "http://Adress:Port/Path" for a POST request with
-        Form-Data (UrlEncoded) or JSON-Data (not implemented jet). Default is "http://localhost:8080/".
-        The data get's parsed and passed to the next step as "payload" as a dict().
-
-        code - block:
-        Der Webserver liest die übermittelten Werte und speichert sie nach payload. Danach wird der
-        optionale code-block ausgefüht, dabei hat man nun die Gelegenheit die Werte zu überprüfen und
-        auch zu ändern, dazu überschreibt der code-block die payload mit neuen Werten. Soll die Ausführung
-        abgebrochen werden muss der code-block eine Exception auslösen oder -um die Ausführung still
-        abzubrechen- die payload auf None gesetzt werden. Bei einer Exception wird dem Client ein 500er HTTP
-        Statuscode übermittelt.
-        TODO: Alles verbessern! (im code-block http-header setzen, client response ...)
-
-
+    EntryPoint(s):
         __ LOOP: __
 
         entrypoint loop IDENTIFER|STRING {
